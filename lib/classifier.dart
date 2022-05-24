@@ -61,5 +61,12 @@ abstract class Classifier{
       }
   }
 
-
+  Future<void> loadLable() async {
+    labels = await FileUtil.loadLabels(_labelsFileName);
+    if (labels.length == _labelsLength) {
+      print('Labels loaded successfully');
+    } else {
+      print('Unable to load labels');
+    }
+  }
 }
