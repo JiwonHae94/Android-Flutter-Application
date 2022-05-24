@@ -1,4 +1,13 @@
+import 'dart:io';
+
+import 'package:android_flutter_application/classifier.dart';
+import 'package:android_flutter_application/classifier_float.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -49,67 +58,96 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  late Classifier _classifier;
+  var logger = Logger();
 
-  void _incrementCounter() {
+
+  File? _image;
+  final picker = ImagePicker();
+
+  Image? _imageWidget;
+  img.Image? fox;
+  Category? category;
+
+  @override
+  void initState(){
+    super.initState();
+    _classifier = ClassifierFloat();
+  }
+
+  Future getImage() async{
+    final pickedFile = await picker.getImage(source: ImageSource.gallery);
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _image = File(pickedFile!.path);
+      _imageWidget = Image.file(_image!);
+
+      _predict();
     });
   }
 
+  void _predict() async {
+    img.Image imageInput = img.decodeImage(_image!.readAsBytesSync())!;
+    var pred = _classifier.predict(imageInput);
+
+    setState(() {
+        this.category = pred;
+    });
+  }
+  //
+  // void _incrementCounter() {
+  //   setState(() {
+  //     // This call to setState tells the Flutter framework that something has
+  //     // changed in this State, which causes it to rerun the build method below
+  //     // so that the display can reflect the updated values. If we changed
+  //     // _counter without calling setState(), then the build method would not be
+  //     // called again, and so nothing would appear to happen.
+  //     _counter++;
+  //   });
+  // }
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('TfLite Flutter Helper',
+            style: TextStyle(color: Colors.white)),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Column(
+        children: <Widget>[
+          Center(
+            child: _image == null
+                ? Text('No image selected.')
+                : Container(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height / 2),
+              decoration: BoxDecoration(
+                border: Border.all(),
+              ),
+              child: _imageWidget,
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
+          ),
+          SizedBox(
+            height: 36,
+          ),
+          Text(
+            category != null ? category!.label : '',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(
+            height: 8,
+          ),
+          Text(
+            category != null
+                ? 'Confidence: ${category!.score.toStringAsFixed(3)}'
+                : '',
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        onPressed: getImage,
+        tooltip: 'Pick Image',
+        child: Icon(Icons.add_a_photo),
+      ),
     );
   }
 }
