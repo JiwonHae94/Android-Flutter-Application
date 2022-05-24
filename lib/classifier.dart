@@ -69,4 +69,14 @@ abstract class Classifier{
       print('Unable to load labels');
     }
   }
+
+  TensorImage _preprocess(){
+      int cropSize = min(_inputImage.height, _inputImage.width);
+      return ImageProcessorBuilder()
+          .add(ResizeWithCropOrPadOp(cropSize, cropSize))
+          .add(ResizeOp(_inputShape[1], _inputShape[2], ResizeMethod.BILINEAR))
+          .add(preProcessNormalizeOp)
+          .build()
+          .process(_inputImage);
+  }
 }
