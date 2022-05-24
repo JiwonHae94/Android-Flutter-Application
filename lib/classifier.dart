@@ -79,4 +79,43 @@ abstract class Classifier{
           .build()
           .process(_inputImage);
   }
+
+  Category predict(Image image){
+    _inputImage = TensorImage(_inputType);
+    _inputImage.loadImage(image);
+    _inputImage = _preprocess();
+
+    final runs = DateTime.now().millisecondsSinceEpoch;
+    interpreter.run(_inputImage.buffer, _outputBuffer.getBuffer());
+    final run = DateTime.now().millisecondsSinceEpoch - runs;
+    print('Inference elapsed time: $run ms');
+
+    Map<String, double> labeledProb = TensorLabel.fromList(
+        labels, _probabilityProcessor.process(_outputBuffer))
+        .getMapWithFloatValue();
+    final pred = getTopProbability(labeledProb);
+
+    return Category(pred.key, pred.value);
+  }
+
+
+  void close() {
+    interpreter.close();
+  }
+}
+
+MapEntry<String, double> getTopProbability(Map<String, double> labeledProb) {
+  var pq = PriorityQueue<MapEntry<String, double>>(compare);
+  pq.addAll(labeledProb.entries);
+  return pq.first;
+}
+
+int compare(MapEntry<String, double> e1, MapEntry<String, double> e2) {
+  if (e1.value > e2.value) {
+    return -1;
+  } else if (e1.value == e2.value) {
+    return 0;
+  } else {
+    return 1;
+  }
 }
