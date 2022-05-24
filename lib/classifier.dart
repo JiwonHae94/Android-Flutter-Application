@@ -1,0 +1,65 @@
+import 'dart:math';
+
+import 'package:image/image.dart';
+import 'package:collection/collection.dart';
+import 'package:logger/logger.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
+
+abstract class Classifier{
+  late Interpreter interpreter;
+  late InterpreterOptions _interpreterOptions;
+
+  var logger = Logger();
+
+  late List<int> _inputShape;
+  late List<int> _outputShape;
+
+  late TensorImage _inputImage;
+  late TensorBuffer _outputBuffer;
+
+  late TfLiteType _inputType;
+  late TfLiteType _outputType;
+
+  final String _labelsFileName = 'assets/labels.txt';
+
+  final int _labelsLength = 1001;
+  late var _probabilityProcessor;
+
+  late List<String> labels;
+
+  String get modelName;
+
+  NormalizeOp get preProcessNormalizeOp;
+  NormalizeOp get postProcessNormalizeOp;
+
+  Classifier({int? numThreads}){
+      _interpreterOptions = InterpreterOptions();
+      _interpreterOptions.threads = numThreads ?? 4;
+
+      loadModel();
+      loadLabels();
+
+  }
+
+  Future<void> loadModel() async{
+      try{
+          interpreter = await Interpreter.fromAsset(modelName, options : _interpreterOptions);
+          print("Interpreter created successfully");
+
+
+          _inputShape = interpreter.getInputTensor(0).shape;
+          _outputShape = interpreter.getOutputTensor(0).shape;
+          _inputType = interpreter.getInputTensor(0).type;
+          _outputType = interpreter.getOutputTensor(0).type;
+
+          _outputBuffer = TensorBuffer.createFixedSize(_outputShape, _outputType);
+          _probabilityProcessor = TensorProcessorBuilder().add(postProcessNormalizeOp).build();
+
+      }catch(e){
+        print('Unable to create interpreter, Caught Exception: ${e.toString()}');
+      }
+  }
+
+
+}
