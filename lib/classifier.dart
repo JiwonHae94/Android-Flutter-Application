@@ -39,14 +39,12 @@ abstract class Classifier{
 
       loadModel();
       loadLabels();
-
   }
 
   Future<void> loadModel() async{
       try{
           interpreter = await Interpreter.fromAsset(modelName, options : _interpreterOptions);
           print("Interpreter created successfully");
-
 
           _inputShape = interpreter.getInputTensor(0).shape;
           _outputShape = interpreter.getOutputTensor(0).shape;
